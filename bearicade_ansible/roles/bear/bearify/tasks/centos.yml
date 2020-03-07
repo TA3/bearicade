@@ -1,8 +1,9 @@
 ---
-- name: Ensure pyotp is installed
+- name: Ensure pyotp and PyMySQL is installed
   pip:
     name:
       - pyotp
+      - PyMySQL
     state: present
 
 - name: Installing mysql
