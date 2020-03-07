@@ -1,0 +1,8 @@
+{
+    "require": {
+        "phpauth/phpauth": "^1.1",
+        "robthree/twofactorauth": "^1.6",
+        "respect/validation": "^1.1",
+        "exeque/php-haveibeenpwned": "dev-master"
+    }
+}

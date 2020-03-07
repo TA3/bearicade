@@ -1,0 +1,183 @@
+{
+    "definitions": {},
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "http://example.com/root.json",
+    "type": "object",
+    "title": "The Root Schema",
+    "required": [
+        "userInfo",
+        "time",
+        "clicks",
+        "mouseMovements",
+        "mouseScroll",
+        "contextChange"
+    ],
+    "properties": {
+        "userInfo": {
+            "$id": "#/properties/userInfo",
+            "type": "object",
+            "title": "The Userinfo Schema",
+            "required": [
+                "appCodeName",
+                "appName",
+                "vendor",
+                "platform",
+                "userAgent"
+            ],
+            "properties": {
+                "appCodeName": {
+                    "$id": "#/properties/userInfo/properties/appCodeName",
+                    "type": "string",
+                    "title": "The Appcodename Schema",
+                    "default": "",
+                    "examples": [
+                        "Mozilla"
+                    ],
+                    "pattern": "^(.*)$"
+                },
+                "appName": {
+                    "$id": "#/properties/userInfo/properties/appName",
+                    "type": "string",
+                    "title": "The Appname Schema",
+                    "default": "",
+                    "examples": [
+                        "Netscape"
+                    ],
+                    "pattern": "^(.*)$"
+                },
+                "vendor": {
+                    "$id": "#/properties/userInfo/properties/vendor",
+                    "type": "string",
+                    "title": "The Vendor Schema",
+                    "default": "",
+                    "examples": [
+                        "Google Inc."
+                    ],
+                    "pattern": "^(.*)$"
+                },
+                "platform": {
+                    "$id": "#/properties/userInfo/properties/platform",
+                    "type": "string",
+                    "title": "The Platform Schema",
+                    "default": "",
+                    "examples": [
+                        "MacIntel"
+                    ],
+                    "pattern": "^(.*)$"
+                },
+                "userAgent": {
+                    "$id": "#/properties/userInfo/properties/userAgent",
+                    "type": "string",
+                    "title": "The Useragent Schema",
+                    "default": "",
+                    "examples": [
+                        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36"
+                    ],
+                    "pattern": "^(.*)$"
+                }
+            }
+        },
+        "time": {
+            "$id": "#/properties/time",
+            "type": "object",
+            "title": "The Time Schema",
+            "required": [
+                "startTime",
+                "currentTime"
+            ],
+            "properties": {
+                "startTime": {
+                    "$id": "#/properties/time/properties/startTime",
+                    "type": "integer",
+                    "title": "The Starttime Schema",
+                    "default": 0,
+                    "examples": [
+                        1573993315016
+                    ]
+                },
+                "currentTime": {
+                    "$id": "#/properties/time/properties/currentTime",
+                    "type": "integer",
+                    "title": "The Currenttime Schema",
+                    "default": 0,
+                    "examples": [
+                        1573993333143
+                    ]
+                }
+            }
+        },
+        "clicks": {
+            "$id": "#/properties/clicks",
+            "type": "object",
+            "title": "The Clicks Schema",
+            "required": [
+                "clickCount",
+                "clickDetails"
+            ],
+            "properties": {
+                "clickCount": {
+                    "$id": "#/properties/clicks/properties/clickCount",
+                    "type": "integer",
+                    "title": "The Clickcount Schema",
+                    "default": 0,
+                    "examples": [
+                        3
+                    ]
+                },
+                "clickDetails": {
+                    "$id": "#/properties/clicks/properties/clickDetails",
+                    "type": "array",
+                    "title": "The Clickdetails Schema",
+                    "items": {
+                        "$id": "#/properties/clicks/properties/clickDetails/items",
+                        "type": "array",
+                        "title": "The Items Schema",
+                        "items": {
+                            "$id": "#/properties/clicks/properties/clickDetails/items/items",
+                            "type": "integer",
+                            "title": "The Items Schema",
+                            "default": 0,
+                            "examples": [
+                                369,
+                                341,
+                                "html>body>div#login>div.ui.container.animated.fadeInDown>h2.ui.header",
+                                1573993317355
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "mouseMovements": {
+            "$id": "#/properties/mouseMovements",
+            "type": "array",
+            "title": "The Mousemovements Schema",
+            "items": {
+                "$id": "#/properties/mouseMovements/items",
+                "type": "array",
+                "title": "The Items Schema",
+                "items": {
+                    "$id": "#/properties/mouseMovements/items/items",
+                    "type": "integer",
+                    "title": "The Items Schema",
+                    "default": 0,
+                    "examples": [
+                        358,
+                        383,
+                        1573993317011
+                    ]
+                }
+            }
+        },
+        "mouseScroll": {
+            "$id": "#/properties/mouseScroll",
+            "type": "array",
+            "title": "The Mousescroll Schema"
+        },
+        "contextChange": {
+            "$id": "#/properties/contextChange",
+            "type": "array",
+            "title": "The Contextchange Schema"
+        }
+    }
+}

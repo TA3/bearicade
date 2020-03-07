@@ -1,0 +1,9 @@
+#!/bin/sh
+        declare -a servers=({% for node in nodes %} "{{node['ip']}}"{% for worker in node['workers'] | default([]) %} "{{worker}}"{% endfor %}{% endfor %})
+        for i in "${servers[@]}"
+        do
+            sudo scp /etc/passwd "$i":/etc/passwd
+            sudo scp /etc/shadow "$i":/etc/shadow
+            sudo scp /etc/group "$i":/etc/group
+        done
+		echo "Sync Completed"

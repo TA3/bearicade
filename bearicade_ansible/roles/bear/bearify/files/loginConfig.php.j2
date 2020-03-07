@@ -1,0 +1,11 @@
+<?php
+$c_host = "{{mysql_container_name}}";
+$c_user = "root";
+$c_password = "{{mysql_root_password}}";
+$c_dbname = "auth";
+$c_port = "{{mysql_port}}";
+$dbh = new PDO("mysql:host=". $c_host .";port=". $c_port .";dbname=". $c_dbname, $c_user, $c_password);
+$config = new PHPAuth\Config($dbh);
+$auth   = new PHPAuth\Auth($dbh, $config);
+$tfa = new RobThree\Auth\TwoFactorAuth('{{ tfa_name }}');
+?>

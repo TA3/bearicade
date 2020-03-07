@@ -1,0 +1,22 @@
+{{bearicade_domain}}:{{http_port}} {
+        redir https://{host}{uri}
+}
+{{bearicade_domain}}:{{https_port}} {
+        on startup php-fpm7
+        {{ "tls off" if not tls_enabled else "" }}
+        {% if ( not lets_encrypt and tls_enabled) %}
+        tls /root/.caddy/certificates/{{domain_cer_file}} /root/.caddy/certificates/{{domain_key_file}}
+        {% endif %}
+        status 403 {
+                /system
+        }
+	    root /srv
+        gzip
+	    fastcgi / 127.0.0.1:{{php_port}} php {
+                ext .php
+                split .php
+                index index.php
+        }
+        errors /srv/system/log/errors.log
+        log / /srv/system/log/requests.log "\['{method}\','{proto}\','{scheme}','{host}\','{path}','{query-escaped}','{fragment}','{when_unix}','{remote}','{port}','{>User-Agent}','{size}','{status}','{latency_ms}','{mitm}','{>Referer}','{~authID}']"
+}

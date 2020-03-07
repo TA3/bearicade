@@ -1,0 +1,70 @@
+---
+- name: Installing qrencode
+  yum:
+    name: qrencode
+    state: present
+
+- name: Install Remi PHP repo
+  yum:
+    name: https://rpms.remirepo.net/enterprise/remi-release-7.rpm
+
+- name: Installing php 7.4
+  yum:
+    name:
+      - php
+      - php-cli
+    enablerepo: remi-php74
+
+- name: Hashing password
+  shell: php -r 'echo password_hash("{{admin_password}}", PASSWORD_BCRYPT, ["cost" => 10]);'
+  register: admin_password_hash
+
+- name: Generating Adminstrator TOTP Secret
+  script: totp_generate.py
+  register: admin_totp_secret
+
+- name: Generating TOTP QR Code
+  shell: echo 'otpauth://totp/Administrator?secret={{admin_totp_secret.stdout}}&issuer=Bearicade&period=30&algorithm=SHA1&digits=6' | tr -d '\n' | qrencode -t UTF8
+  register: admin_totp_secret_qr
+
+- name: Generating Administration SQL for the added user
+  template:
+    src: ../files/admin-servers.sql.j2
+    dest: "{{ installation_directory }}/mysql-temp/admin-servers.sql"
+    owner: "{{ bearicade_user }}"
+    group: "{{ bearicade_group }}"
+    mode: 0644
+- name: Updating Servers for Administration database
+  mysql_db:
+    login_host: 127.0.0.1
+    login_user: root
+    login_password: "{{mysql_root_password}}"
+    state: import
+    name: admin
+    target: "{{ installation_directory }}/mysql-temp/admin-servers.sql"
+- name: Generating Config SQL
+  template:
+    src: ../files/auth-config.sql.j2
+    dest: "{{ installation_directory }}/mysql-temp/auth-config.sql"
+    owner: "{{ bearicade_user }}"
+    group: "{{ bearicade_group }}"
+    mode: 0644
+- name: Updating Servers for Authentication for the added user
+  mysql_db:
+    login_host: 127.0.0.1
+    login_user: root
+    login_password: "{{mysql_root_password}}"
+    state: import
+    name: auth
+    target: "{{ installation_directory }}/mysql-temp/auth-config.sql"
+
+- name: Scan the following QR Code in 2FA apps (Google Authenticator, Authy)
+  debug:
+    var: admin_totp_secret_qr.stdout_lines
+
+- name: Administrator Login Details
+  debug:
+    msg:
+      - "Administrator Email: {{admin_email}}"
+      - "Administrator TOTP Secret: {{admin_totp_secret.stdout}}"
+      - "Bearicade: https://{{bearicade_domain}}/"

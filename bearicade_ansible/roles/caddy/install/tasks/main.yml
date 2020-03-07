@@ -1,0 +1,90 @@
+---
+- name: Create caddy directory
+  file:
+    path: "{{ installation_directory }}/caddy/caddyfiles"
+    recurse: true
+    state: directory
+- name: Create PHP-FPM conf directory
+  file:
+    path: "{{ installation_directory }}/caddy/php-fpm.d"
+    state: directory
+- name: Generating caddy configuration
+  template:
+    src: ../files/Caddyfile.j2
+    dest: "{{ installation_directory }}/caddy/caddyfiles/Caddyfile"
+
+- name: Copy PHP-FPM configuration
+  template:
+    src: ../files/www.conf
+    dest: "{{ installation_directory }}/caddy/php-fpm.d/www.conf"
+
+- name: Ensure logs file exists
+  copy:
+    content: ""
+    dest: "{{ installation_directory }}/public/system/log/requests.log"
+    force: no
+- name: Ensure error logs file exists
+  copy:
+    content: ""
+    dest: "{{ installation_directory }}/public/system/log/errors.log"
+    force: no
+- name: Stop Container ("{{caddy_container_name}}")
+  docker_container:
+    name: "{{caddy_container_name}}"
+    image: abiosoft/caddy:1.0.3-no-stats
+    state: stopped
+
+- name: Create docker network
+  docker_network:
+    name: "{{ docker_network }}"
+    state: present
+
+- name: Run caddy:1.0.3 with PHP-FPM
+  docker_container:
+    image: abiosoft/caddy:1.0.3-php-no-stats
+    labels:
+      traefik.enable: "false"
+    name: "{{ caddy_container_name }}"
+    networks:
+      - name: "{{ docker_network }}"
+    links:
+      - "{{mysql_container_name}}:{{mysql_container_name}}"
+    ports:
+      - "{{ http_port }}:80"
+      - "{{ https_port }}:443"
+    pull: true
+    recreate: true
+    restart_policy: always
+    state: "started"
+    volumes:
+      - "{{ installation_directory }}/caddy/caddyfiles/Caddyfile:/etc/Caddyfile"
+      - "{{ installation_directory }}/caddy/php-fpm.d/www.conf:/etc/php7/php-fpm.d/www.conf"
+      - "{{ installation_directory }}/public:/srv"
+      - /root/.caddy:/root/.caddy
+      - /keys_rsa:/keys_rsa
+      - /home:/home
+      - "{{domain_certificates_path}}:/root/.caddy/certificates"
+      - /var/run/docker.sock:/var/run/docker.sock
+
+- name: Waiting for Caddy to start up (10 Seconds)
+  pause:
+    prompt: To continue early press ctrl+c and then c. To abort a playbook press ctrl+c and then a.
+    seconds: 10
+- name: Start PHP-FPM with allow-run-root in caddy container
+  shell: "docker exec -it {{caddy_container_name}} /usr/sbin/php-fpm7 -R"
+
+- name: Generate SSH keys for caddy container
+  shell: "docker exec -it {{caddy_container_name}} ssh-keygen -t rsa -N '' -f /root/.ssh/id_rsa"
+
+# - name: Modifying know hosts on the caddy container
+#   shell: "docker exec -it {{caddy_container_name}} echo 'StrictHostKeyChecking accept-new' >> /etc/ssh/ssh_config"
+
+- name: Getting public key from the caddy container
+  shell: "docker exec -it {{caddy_container_name}} cat /root/.ssh/id_rsa.pub"
+  register: caddy_container_pub_key
+
+- name: Set authorized keys taken from caddy container
+  authorized_key:
+    user: root
+    state: present
+    key: "{{caddy_container_pub_key.stdout}}"

@@ -1,0 +1,37 @@
+---
+- name: Updating bearicade scripts
+  template:
+    src: ../files/syncUsers.sh.j2
+    dest: "{{ installation_directory }}/public/system/scripts/syncUsers.sh"
+    owner: "{{ bearicade_user }}"
+    group: "{{ bearicade_group }}"
+- name: Generating Administration SQL for servers
+  template:
+    src: ../files/admin-servers.sql.j2
+    dest: "{{ installation_directory }}/mysql-temp/admin-servers.sql"
+    owner: "{{ bearicade_user }}"
+    group: "{{ bearicade_group }}"
+    mode: 0644
+- name: Updating Servers for Administration database
+  mysql_db:
+    login_host: 127.0.0.1
+    login_user: root
+    login_password: "{{mysql_root_password}}"
+    state: import
+    name: admin
+    target: "{{ installation_directory }}/mysql-temp/admin-servers.sql"
+- name: Generating Config SQL
+  template:
+    src: ../files/auth-config.sql.j2
+    dest: "{{ installation_directory }}/mysql-temp/auth-config.sql"
+    owner: "{{ bearicade_user }}"
+    group: "{{ bearicade_group }}"
+    mode: 0644
+- name: Updating Servers for Administration database
+  mysql_db:
+    login_host: 127.0.0.1
+    login_user: root
+    login_password: "{{mysql_root_password}}"
+    state: import
+    name: auth
+    target: "{{ installation_directory }}/mysql-temp/auth-config.sql"

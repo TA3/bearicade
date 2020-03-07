@@ -1,0 +1,14 @@
+---
+- hosts: gateway
+  vars_files:
+    - ./config.yml
+  vars_prompt:
+    - name: "admin_password"
+      prompt: "Administrator Password (hidden)"
+      unsafe: yes
+      private: yes
+  roles:
+    #- mysql
+    - bear/bearify
+    - caddy/install
+    - bear/post_bearify

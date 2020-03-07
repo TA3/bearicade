@@ -1,0 +1,2 @@
+DELETE FROM `servers`;
+INSERT INTO `servers` VALUES {% for node in nodes %}('{{node.name}}',_binary '{{node.ip}}',{{node.ssh_port}},{{ 1 if node.headnode else 0 }}){{ "," if not loop.last else "" }}{% endfor %};

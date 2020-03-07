@@ -1,0 +1,14 @@
+- name: Check all port numbers are not in use
+  wait_for:
+    host: 0.0.0.0
+    port: "{{ item }}"
+    state: stopped
+    delay: 0
+    timeout: 5
+    msg: "Port: {{ item }} is used -> check config.yml"
+  ignore_errors: no
+  with_items:
+    - "{{http_port }}"
+    - "{{https_port}}"
+    - "{{php_port}}"
+    - "{{mysql_port}}"

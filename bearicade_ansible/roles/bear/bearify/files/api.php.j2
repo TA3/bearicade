@@ -1,0 +1,825 @@
+<?php
+// ini_set('display_errors', 1);
+// ini_set('display_startup_errors', 1);
+// error_reporting(E_ALL);
+header('Access-Control-Allow-Methods: GET');
+header("X-Content-Type-Options: nosniff");
+header("Strict-Transport-Security: max-age=31536000 ;");
+header("X-Frame-Options: deny");
+header("X-XSS-Protection: 1; mode=block");
+header("Content-Type: application/json");
+header("Access-Control-Allow-Origin: *"); 
+//header("Access-Control-Allow-Headers: HTTP_API_KEY");
+//header('Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: API_KEY');
+//http_response_code(403);
+// if (isset($_SERVER["HTTP_ORIGIN"])) {
+//     $address = "http://".$_SERVER["SERVER_NAME"];
+//     if (strpos($address, $_SERVER["HTTP_ORIGIN"]) !== 0) {
+//         die("CSRF protection in POST request: detected invalid Origin header: ".$_SERVER["HTTP_ORIGIN"].$_SERVER["SERVER_NAME"]);
+//     }
+// }
+require '../config.php';
+require_once $_SERVER['DOCUMENT_ROOT'].'/access/vendor/autoload.php';
+require_once $_SERVER['DOCUMENT_ROOT'].'/access/loginConfig.php';
+require $_SERVER['DOCUMENT_ROOT'].'/controller/controller.php';
+
+
+function permissionDenied(){
+    $res = array('error' => 'Permission Denied');
+    $conn = null;
+    echo json_encode($res);
+    header("Content-Type: application/json");
+    if ($_SERVER['REQUEST_METHOD'] !== 'OPTIONS') { //some request libraries sends options to check return code this will give 403 to non OPTIONS requests.
+        http_response_code(403);
+    }
+    else{
+        http_response_code(200);
+    }
+    die();
+}
+$res = array('error' => false);
+$hasPermission = false;
+$availableActions = ["","blockedAttempts","userBehaviour","listActivity","listUsers","listDistinctIPs","deleteUser","toggleUserActive","listGroups","createGroup","deleteGroup","sessionsCount","onlineUsersCount","failsCount","AICount","sessionsGeo","viewUserBrowserRecords","viewUserActivity","viewUserLoginRecords","viewUser","loadConfig","saveConfig","sendTGMessage","jsonNeuralNetwork","viewLoginAttempts","requestsLogs","createSystemUser","syncUsers","removeSystemUser","systemUserExists","listServers"];
+if (isset($_COOKIE['authID'])) {
+    (int)$id = $auth->getSessionUID($_COOKIE['authID']);
+    if ($id) {
+        $isAdmin = $auth->isAdmin($_COOKIE['authID']);
+        if ($isAdmin) {
+            $res['isAdmin'] = $isAdmin;
+            $res['id'] = $id;
+            $hasPermission = $isAdmin;
+            
+        }
+        $action = '';
+        if (isset($_GET['a'])) {
+            $action = $_GET['a'];
+        }
+        $actionsAllowed = $conn->query("SELECT actions FROM apiAccess WHERE uid = $id")->fetch();
+        if ($actionsAllowed !== false && json_decode($actionsAllowed['actions']) ) { 
+            $actionsAllowed = json_decode($actionsAllowed['actions']);
+            foreach($actionsAllowed as $val){
+                if ($val === $action) {
+                    $hasPermission = true;
+                break;
+                }
+            }
+        }
+
+        
+       /* if($group = $conn->query("SELECT groups.name, groups.id from users INNER JOIN groups AS groups ON users.group = groups.id WHERE users.id = $id")->fetchAll(PDO::FETCH_ASSOC)){
+            $res['group'] = $group;
+        } */
+    }
+    else {
+        permissionDenied();
+    }
+}
+//&& ctype_alnum($_GET['key']) && strlen($_GET['key'])
+else if(
+        (isset($_SERVER['HTTP_API_KEY'])) && //is it set
+        (($pos = strpos($_SERVER['HTTP_API_KEY'], ".")) !== FALSE) &&  //detect if there is 2 parts seperated by .
+        ($user_key = substr($_SERVER['HTTP_API_KEY'], $pos+1)) &&  // get the key part
+        (strlen($user_key) == 32) &&  // check length of key = 32
+        ($user_id = substr($_SERVER['HTTP_API_KEY'], 0, strlen($_SERVER['HTTP_API_KEY'])-strlen($user_key))) && //get base64 id
+        ($user_id = base64_decode($user_id)) &&  //decode id
+        (is_numeric($user_id))) //check the id is a number
+        { 
+    if(verifyKey($conn, $user_id, $user_key)){
+        $isAdmin = $dbh->query("SELECT isAdmin FROM users where id = $user_id")->fetchColumn();
+        if ($isAdmin) {
+            $res['isAdmin'] = $isAdmin;
+            $res['id'] = $user_id;
+            $id = $user_id;
+            //$hasPermission = $isAdmin;
+        }
+        $action = '';
+        if (isset($_GET['a'])) {
+            $action = $_GET['a'];
+        }
+        $actionsAllowed = $conn->query("SELECT actions FROM apiAccess WHERE uid = $user_id")->fetch();
+        if ($actionsAllowed !== false && json_decode($actionsAllowed['actions']) ) { 
+            $actionsAllowed = json_decode($actionsAllowed['actions']);
+            foreach($actionsAllowed as $val){
+                if ($val === $action) {
+                    $hasPermission = true;
+                break;
+                }
+            }
+        }
+    }
+    else{
+        permissionDenied();
+    }
+}
+else{
+    permissionDenied();
+}
+
+
+
+
+
+switch ($action) {
+    case 'apiManagement':
+        $stmt = $conn->prepare("SELECT actions FROM apiAccess WHERE uid = $id");
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if($hasPermission || $row){
+        
+            $method = '';
+            if (isset($_GET['m'])) {
+            $method = $_GET['m'];
+            
+            }
+            switch ($method) {
+            case 'generate':
+                $domain = '';
+                $pattern = '/^https?:\/\/[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/m';
+                if (isset($_GET['d']) && preg_match($pattern, base64_decode($_GET['d']))) {
+                    $domain = base64_decode($_GET['d']);
+                    $res = array_merge($res, generateKey($conn, $domain, userSupplied($id)));
+                }
+                else{
+                    $res = array('error' => 'Invalid domain');
+                }
+                
+                break;
+            case 'check':
+                break;
+            
+            default:
+                $res = array('error' => 'No valid method supplied');
+                break;
+            }
+        }
+        else{
+            permissionDenied();
+        }
+    break;
+//-----------------------------------------------------------------------------
+
+    case 'viewUserAPIInfo':
+        if ($isAdmin && isset($_GET['u']) && is_numeric($_GET['u']) && strpos($_GET['u'], '.') === false) {
+            (int)$uid = $_GET['u'];
+            $res['userAPIInfo'] = ($conn->query("SELECT actions, domain FROM apiAccess where uid = $uid")->fetch(PDO::FETCH_ASSOC));
+        }
+        else{
+            $res['userAPIInfo'] = ($conn->query("SELECT actions, domain FROM apiAccess where uid = $id")->fetch(PDO::FETCH_ASSOC));
+        }
+        break;
+    //-----------------------------------------------------------------------------
+
+    case 'userBehaviour':
+        if($hasPermission){
+            $res['userBehaviour'] = ($conn->query("SELECT * FROM userBehaviour")->fetchAll(PDO::FETCH_ASSOC));
+           // $res['userBehaviour'] = str_replace('','"', $res['userBehaviour']);
+        }
+        else{
+            permissionDenied();
+        }
+
+        break;
+//-----------------------------------------------------------------------------
+  
+    case 'listActivity':
+        if($hasPermission){
+            $res['users'] = $conn->query("SELECT * FROM activity where uid != 1 ")->fetchAll(PDO::FETCH_ASSOC);
+        }
+        else{
+            permissionDenied();
+        }
+
+        break;
+//-----------------------------------------------------------------------------
+  
+    case 'blockedAttempts':
+        if($hasPermission){
+            $res['blockedAttempts'] = $dbh->query("SELECT * FROM attempts")->fetchAll(PDO::FETCH_ASSOC);
+        }
+        else{
+            permissionDenied();
+        }
+
+        break;
+//-----------------------------------------------------------------------------
+    case 'listUsers':
+        if($hasPermission){
+            $res['users'] = $conn->query("SELECT * FROM users")->fetchAll(PDO::FETCH_ASSOC);
+        }
+        else{
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+case 'listDistinctIPs':
+    if($hasPermission){
+        $ips=array();
+        $result = $conn->query("SELECT DISTINCT browserIP FROM usersBrowser")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($result as $key => $value) { //loop through ips to get only public ips with regex
+            if(!preg_match('/(^0\.)|(^10\.)|(^100\.6[4-9]\.)|(^100\.[7-9]\d\.)|(^100\.1[0-1]\d\.)|(^100\.12[0-7]\.)|(^127\.)|(^169\.254\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)|(^192\.0\.0\.)|(^192\.0\.2\.)|(^192\.88\.99\.)|(^192\.168\.)|(^198\.1[8-9]\.)|(^198\.51\.100\.)|(^203.0\.113\.)|(^22[4-9]\.)|(^23[0-9]\.)|(^24[0-9]\.)|(^25[0-5]\.)/m', $value['browserIP'])){
+                array_push($ips, $value['browserIP']);
+            }
+        }
+        $res['list'] = $ips;
+    }
+    else{
+        permissionDenied();
+    }
+    break;
+//-----------------------------------------------------------------------------
+    case 'deleteUser':
+        if ($hasPermission) {
+            if (isset($_GET['u']) && is_numeric($_GET['u']) && strpos($_GET['u'], '.') === false && $_GET['u'] != 1) {
+                (int)$uid = $_GET['u'];
+                logActivity($id, 'User', 'Deleted:"'. $uid. '"');
+                $res['deleteP1'] = $conn->prepare("DELETE FROM users WHERE id = $uid")->execute();
+                $res['deleteP2'] = $dbh->prepare("DELETE FROM users WHERE id = $uid")->execute();
+            }
+            else {
+                $res = array('error' => 'invalid user supplied');
+            }
+        }
+        else {
+            permissionDenied();
+        }
+
+        break;
+//-----------------------------------------------------------------------------
+    case 'toggleUserActive':
+        if ($hasPermission) {
+            if (isset($_GET['u']) && is_numeric($_GET['u']) && strpos($_GET['u'], '.') === false && $_GET['u'] != 1) {
+                (int)$id = $_GET['u'];
+                $isUserActive = $dbh->query("SELECT isactive FROM users WHERE id = $id")->fetch();
+                $isUserActive = (bool)$isUserActive['isactive'];
+                $isUserActive = !$isUserActive;
+                if(!$dbh->prepare("UPDATE users SET isactive = ".json_encode($isUserActive)." WHERE id = $id")->execute())
+                    $res = array('error' => 'could not change state');
+                else
+                    $res["isActive"] = $isUserActive;
+            }
+            else {
+                $res = array('error' => 'invalid user supplied');
+            }
+        }
+        else {
+            permissionDenied();
+        }
+
+        break;
+//-----------------------------------------------------------------------------
+    case 'listGroups':
+        if($hasPermission){
+            $result = $conn->prepare("SELECT * FROM groups");
+            $groups = array();
+            $result->execute();
+            $results = $result->fetchAll(PDO::FETCH_CLASS);
+            $res['listGroups'] = $results;
+        }
+        else {
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+case 'createGroup':
+        if($hasPermission){
+            if (isset($_GET['groupName']) && is_string($_GET['groupName']) && !preg_match('/[\'^£$%&*()}{@#~?><>,|=_+¬-]/', $_GET['groupName'])) {
+                (string)$groupName = $_GET['groupName'];
+                $result = $conn->prepare("INSERT INTO groups(name) VALUES('$groupName')");
+                if ($result->execute()) {
+                    logActivity($id, 'Group', 'Created:"'. $groupName. '"');
+                    $res['success'] = true;
+                }
+                else{
+                    $res = array('error' => 'Unexpected error');
+                }
+            }
+            else {
+                $res = array('error' => 'Parsing group name');
+            }
+        }
+        else {
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+case 'deleteGroup':
+        if($hasPermission){
+            if (isset($_GET['id']) && is_numeric($_GET['id']) && strpos($_GET['id'], '.') === false && $_GET['id'] > 2) {
+                (int)$gid = $_GET['id'];
+                $result = $conn->prepare("DELETE FROM groups WHERE id = $gid");
+                if ($result->execute()) {
+                    logActivity($id, 'Group', 'Deleted:"'. $gid. '"');
+                    $res['success'] = true;
+                }
+                else{
+                    $res = array('error' => 'Unexpected error');
+                }
+            }
+            else {
+                $res = array('error' => 'Parsing group name');
+            }
+        }
+        else {
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+    case 'sessionsCount':
+        if($hasPermission){
+            $result = $dbh->query("SELECT COUNT(*) AS sessionsCount FROM sessions");
+            $result = $result->fetch();
+            $res['sessionsCount'] = $result['sessionsCount'];
+        }
+        else {
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+    case 'onlineUsersCount':
+        if($hasPermission){
+            $result = $conn->query("SELECT COUNT(*) AS onlineUsersCount FROM users WHERE lastOnline > NOW() - INTERVAL 60 SECOND");
+            $result = $result->fetch();
+            $res['onlineUsersCount'] = $result['onlineUsersCount'];
+        }
+        else {
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+    case 'failsCount':
+        if($hasPermission){
+            $result = $conn->query("SELECT COUNT(*) AS failsCount FROM usersLogin WHERE usersLogin.timestamp >= ( CURDATE() - INTERVAL 7 DAY ) AND fails > 0");
+            $result = $result->fetch();
+            $res['failsCount'] = $result['failsCount'];
+        }
+        else if($id) {
+            $result = $conn->query("SELECT COUNT(*) AS failsCount FROM usersLogin WHERE usersLogin.timestamp >= ( CURDATE() - INTERVAL 30 DAY ) AND fails > 0 AND id = $id");
+            $result = $result->fetch();
+            $res['failsCount'] = $result['failsCount'];
+        }
+        else{
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+    case 'AICount':
+        if($hasPermission){
+            $result = $conn->query("SELECT COUNT(*) AS AICount FROM neural_network");
+            $result = $result->fetch();
+            $res['AICount'] = $result['AICount'];
+        }
+        else {
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+    case 'sessionsGeo':
+        if($hasPermission){
+            $result = $dbh->prepare("SELECT uid, ip FROM sessions");
+            $sessions = array();
+            $result->execute();
+            $results = $result->fetchAll(PDO::FETCH_CLASS);
+            $res['sessionsGeo'] = $results;
+        }
+        else {
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+    case 'viewUserBrowserRecords':
+        if ($hasPermission) {
+            if (isset($_GET['u']) && is_numeric($_GET['u']) && strpos($_GET['u'], '.') === false) {
+                (int)$id = $_GET['u'];
+                $result = $conn->query("SELECT * FROM usersBrowser WHERE usersBrowser.id = $id ORDER BY usersBrowser.timestamp DESC");
+                if ($res['browserRecords'] = $result->fetchAll(PDO::FETCH_ASSOC)) {
+
+                }
+                else {
+                    $res = array('error' => 'invalid user supplied or no records');
+                }
+            }
+            else if(isset($_GET['u']) && $_GET['u'] === "all"){
+                $result = $conn->query("SELECT * FROM usersBrowser ORDER BY usersBrowser.timestamp DESC");
+                if ($res['browserRecords'] = $result->fetchAll(PDO::FETCH_ASSOC)) {
+
+                }
+                else {
+                    $res = array('error' => 'No results or bad data');
+                }
+            }
+            else {
+                $res = array('error' => 'invalid user supplied');
+            }
+        }
+        else {
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+    case 'viewUserActivity':
+        if ($hasPermission) {
+            if (isset($_GET['u']) && is_numeric($_GET['u']) && strpos($_GET['u'], '.') === false) {
+                (int)$id = $_GET['u'];
+                $result = $conn->query("SELECT * FROM activity WHERE activity.uid = $id ORDER BY activity.timestamp DESC");
+                if ($res['activity'] = $result->fetchAll(PDO::FETCH_ASSOC)) {
+
+                }
+                else {
+                    $res = array('error' => 'invalid user supplied or no records');
+                }
+            }
+            else {
+                $res = array('error' => 'invalid user supplied');
+            }
+        }
+        else {
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+    case 'viewUserLoginRecords':
+        if ($hasPermission) {
+            if (isset($_GET['u']) && is_numeric($_GET['u']) && strpos($_GET['u'], '.') === false) {
+                (int)$id = $_GET['u'];
+                $result = $conn->query("SELECT * FROM usersLogin WHERE usersLogin.id = $id ORDER BY usersLogin.timestamp DESC");
+                if ($res['loginRecords'] = $result->fetchAll(PDO::FETCH_ASSOC)) {
+
+                }
+                else {
+                    $res = array('error' => 'invalid user supplied or no records');
+                }
+            }
+            else if(isset($_GET['u']) && $_GET['u'] === "all"){
+                $result = $conn->query("SELECT * FROM usersLogin ORDER BY usersLogin.timestamp DESC");
+                if ($res['loginRecords'] = $result->fetchAll(PDO::FETCH_ASSOC)) {
+
+                }
+                else {
+                    $res = array('error' => 'No results or bad data');
+                }
+            }
+            else {
+                $res = array('error' => 'invalid user supplied');
+            }
+        }
+        else {
+            permissionDenied();
+        }
+
+        break;
+//-----------------------------------------------------------------------------
+    case 'viewUser':
+            if (isset($_COOKIE['authID'])) {
+                if(isset($_GET['u']) && is_numeric($_GET['u']) && strpos($_GET['u'], '.') === false){
+                    if ($hasPermission) {
+                            (int)$id = $_GET['u'];
+                            $result = $conn->query("SELECT * FROM users WHERE users.id = $id");
+                            if ($result->fetchColumn()>0) {
+                                $userDetails2 = $conn->query("SELECT * FROM users WHERE users.id = $id")->fetch(PDO::FETCH_ASSOC);
+                                $userDetails1 = $dbh->query("SELECT * FROM users WHERE users.id = $id")->fetch(PDO::FETCH_ASSOC);
+                                $userExists = (bool)trim(preg_replace('/\s+/', '', shell_exec("ssh -o StrictHostKeyChecking=no $(/sbin/ip route|awk '/default/ { print $3 }')". " {{installation_directory}}/public/system/scripts/checkUserExists.sh " . $userDetails2['username'])));
+                                $userDetails = array_merge($userDetails1, $userDetails2);
+                                unset($userDetails['password']);
+                                unset($userDetails['dt']);
+                                $res['userDetails'] = $userDetails;
+                                $res['userDetails']['systemUserExists'] = $userExists;
+                            }
+                            else {
+                                $res = array('error' => 'invalid user supplied');
+                            }
+                        }else{
+                            $res = array('error' => 'invalid user supplied');
+                        }
+                }
+                else{
+                    $result = $conn->query("SELECT * FROM users WHERE users.id = $id");
+                    if ($result->fetchColumn()>0) {
+                        $userDetails2 = $auth->getUser($id);
+                        $userDetails1 = $conn->query("SELECT * FROM users WHERE users.id = $id")->fetchAll(PDO::FETCH_ASSOC);
+                        $userDetails = array_merge($userDetails1[0], $userDetails2);
+                        $res['userDetails'] = $userDetails;
+                        if ($isAdmin) {
+                            $res['userDetails']['userRole'] = 'Administrator';
+                        }else{
+                            $res['userDetails']['userRole'] = 'User';
+                        }
+                    }
+                    else {
+                        $res = array('error' => 'invalid user supplied');
+                    }
+                }
+            }
+            else {
+                permissionDenied();
+            }
+        break;
+//-----------------------------------------------------------------------------
+    case 'loadConfig':
+        $config = $auth->loadConfig();
+        if ($hasPermission) {
+            $res['config'] = ($config);
+        }
+        else if($id) {
+            $res['config']['site_name'] = ($config['site_name']);
+        }
+        else{
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+    case 'saveConfig':
+        if ($hasPermission) {
+            $originalConfig = ($auth->loadConfig());
+        }
+        else {
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+    case 'sendTGMessage':
+        if ($hasPermission) {
+            if (isset($_GET['message'])) {
+                $message = filter_var ( $_GET['message'], FILTER_SANITIZE_STRING);
+                try {
+                    $response = file_get_contents("{{telegram_url}}" . $message);
+                    $res['sent'] = json_decode($response, true)['ok'];
+                } catch (Exception $err) {
+                    $res = array('error' => 'Request Error: ' . $err);
+                }
+            }
+            else {
+                $res = array('error' => 'Invalid Message');
+            }
+
+        }
+        else {
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+    case 'viewTFA':
+        if($id){
+            $secret = $auth->getSecretFromID($id);
+            $res['Secret'] = $secret;
+        }
+        else{
+            permissionDenied();
+        }
+        break;
+//-----------------------------------------------------------------------------
+case 'sessionExpire':
+    if($id){
+        $result = $dbh->query("SELECT expiredate FROM sessions WHERE uid=$id")->fetch();
+        $res['sessionExpire'] = $result['expiredate'] ;
+    }
+    else{permissionDenied();}
+    break;
+//-----------------------------------------------------------------------------
+    case 'jsonNeuralNetwork':
+        if ($hasPermission) {
+            $res['NeuralNetwork'] = $conn->query("SELECT * FROM neural_network")->fetchAll(PDO::FETCH_ASSOC);
+        }
+        else {
+            permissionDenied();
+        }
+
+        break;
+//-----------------------------------------------------------------------------
+case 'apiAccess':
+    if ($isAdmin) {
+        if (isset($_GET['u']) && is_numeric($_GET['u']) && strpos($_GET['u'], '.') === false) {
+            (int)$uid = $_GET['u'];
+            $res['apiAccess'] = $conn->query("SELECT * FROM apiAccess WHERE uid = $uid")->fetch();
+        }
+        else{
+            $res['apiAccess'] = $conn->query("SELECT * FROM apiAccess")->fetch();
+        }
+        $res['apiAccessAvailable'] = json_encode($availableActions);
+    }
+    else {
+        permissionDenied();
+    }
+
+    break;
+//-----------------------------------------------------------------------------
+case 'apiUpdateAccess':
+    if ($isAdmin) {
+        if (isset($_GET['u']) && is_numeric($_GET['u']) && strpos($_GET['u'], '.') === false) {
+            (int)$uid = $_GET['u'];
+            isset($_GET['actions']) && json_decode($_GET['actions']) ? $actions = json_decode($_GET['actions']) : $actions = 0;
+            if ($actions) {
+                $intersectArray = array_intersect($actions, $availableActions);
+                if ($intersectArray === $actions) {
+                    $actions = json_encode($intersectArray);
+                    $stmt = $conn->prepare("SELECT actions FROM apiAccess WHERE uid = $uid");
+                    $stmt->execute();
+                    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if( ! $row)
+                    {
+                        $conn->prepare("INSERT INTO `apiAccess` values($uid, '[]', null, null)")->execute();
+                    }
+                    if($conn->prepare("UPDATE apiAccess SET actions = '$actions' where uid = $uid")->execute()){
+                        $res['result'] = "Updated user API permission";
+                    }
+                    else{
+                        $res['error'] = "Could not update user API permission";
+                    }
+                }
+                else{
+                    $res = array('error' => 'Unknown actions specified.');
+                }
+            }
+            elseif ($_GET['actions'] == "[]") {
+                if($conn->prepare("UPDATE apiAccess SET actions = '[]' where uid = $uid")->execute()){
+                    $res['result'] = "Cleared user API permission";
+                }
+                else{
+                    $res['error'] = "Could not clear user API permission";
+                }
+            }
+            else {
+                $res = array('error' => 'Invalid actions specified for the user.');
+            }
+             
+        }
+        else {
+            $res = array('error' => 'Invalid user specified for this action.');
+        }
+    }
+    else {
+        permissionDenied();
+    }
+
+    break;
+//-----------------------------------------------------------------------------
+    case 'viewLoginAttempts':
+        if ($hasPermission) {
+            $res['loginAttempts'] = $conn->query("SELECT * FROM usersLogin")->fetchAll(PDO::FETCH_ASSOC);
+        }
+        else {
+            permissionDenied();
+        }
+
+        break;
+//-----------------------------------------------------------------------------
+    case 'requestsLogs':
+        if ($hasPermission) {
+            if(isset($_GET["n"]) && is_numeric($_GET['n']) && strpos($_GET['n'], '.') === false){
+                $n = $_GET['n'];
+            }
+            else {
+                $n = 50;
+            }
+            $logs = "";
+            $linecount = 0;
+            $fp = fopen($_SERVER['DOCUMENT_ROOT'].'/system/log/requests.log', 'r');
+            while(!feof($fp)){
+              $line = fgets($fp);
+              $linecount++;
+            }
+            for ($i = $linecount; $i > $linecount - $n; $i--) {
+                if (feof($fp)) {
+                    echo 'EOF reached';
+                    break;
+                }
+                $logs .= fgets($fp);
+            }
+            fclose($fp);
+            $logs = preg_replace('/(?<=\])(\n)(?=\[)/', ",", $logs);
+            $logs = preg_replace('/(?<=\])(\n)$/', "", $logs);
+            $logs = str_replace("'", '"', $logs);
+            $res['requestsLogs'] = "[".$logs."]";
+        }
+        else {
+            permissionDenied();
+        }
+
+        break;
+//-----------------------------------------------------------------------------
+    case 'createSystemUser':
+        if ($hasPermission) {
+            if (isset($_GET['u']) && is_numeric($_GET['u']) && strpos($_GET['u'], '.') === false) {
+                (int)$uid = $_GET['u'];
+                $result = $conn->query("select username from users WHERE id = $uid")->fetch();
+                if ($res['username'] = $result['username']) {
+                    logActivity($id, 'System', 'Created User:"'. $res['username'] . '"');
+                    $res['output'] = shell_exec("ssh -o StrictHostKeyChecking=no $(/sbin/ip route|awk '/default/ { print $3 }')". " {{installation_directory}}/public/system/scripts/createUser.sh " . $res['username']);
+                }
+                else {
+                    $res = array('error' => 'invalid user supplied');
+                }
+            }
+            else {
+                $res = array('error' => 'invalid user supplied');
+            }
+        }
+        else {
+            permissionDenied();
+        }
+
+        break;
+//-----------------------------------------------------------------------------
+    case 'syncUsers':
+        if ($hasPermission) {
+                    logActivity($id, 'System', 'Synced  Users');
+                    $res['output'] = shell_exec("ssh -o StrictHostKeyChecking=no $(/sbin/ip route|awk '/default/ { print $3 }')". " {{installation_directory}}/public/system/scripts/syncUsers.sh ");
+        }
+        else {
+            permissionDenied();
+        }
+
+        break;
+//-----------------------------------------------------------------------------
+    case 'removeSystemUser':
+        if ($hasPermission) {
+            if (isset($_GET['u']) && is_numeric($_GET['u']) && strpos($_GET['u'], '.') === false) {
+                (int)$uid = $_GET['u'];
+                if (isset($_GET['removeHome']) && is_numeric($_GET['removeHome']) && $_GET['removeHome'] == 1) {
+                    $removeHome = 1;
+                }
+                else {
+                    $removeHome = '';
+                }
+                $result = $conn->query("select username from users WHERE id = $uid")->fetch();
+                if ($res['username'] = $result['username']) {
+                    $res['output'] = shell_exec("ssh -o StrictHostKeyChecking=no $(/sbin/ip route|awk '/default/ { print $3 }')". " {{installation_directory}}/public/system/scripts/removeUser.sh " . $res['username'] . " " . $removeHome);
+                    logActivity($id, 'System', 'Removed User:"'. $res['username'] . '"');
+                }
+                else {
+                    $res = array('error' => 'invalid user supplied');
+                }
+            }
+            else {
+                $res = array('error' => 'invalid user supplied');
+            }
+        }
+        else {
+            permissionDenied();
+        }
+
+        break;
+//-----------------------------------------------------------------------------
+    case 'systemUserExists':
+        if ($hasPermission) {
+            if (isset($_GET['u']) && is_numeric($_GET['u']) && strpos($_GET['u'], '.') === false) {
+                (int)$id = $_GET['u'];
+                $result = $conn->query("select username from users WHERE id = $id")->fetch();
+                if ($res['username'] = $result['username']) {
+                    $res['userExists'] = (bool)trim(preg_replace('/\s+/', '', shell_exec("ssh -o StrictHostKeyChecking=no $(/sbin/ip route|awk '/default/ { print $3 }')". " {{installation_directory}}/public/system/scripts/checkUserExists.sh " . $res['username'])));
+                }
+                else {
+                    $res = array('error' => 'invalid user supplied');
+                }
+            }
+            else {
+                $res = array('error' => 'invalid user supplied');
+            }
+        }
+        else {
+            permissionDenied();
+        }
+
+        break;
+//-----------------------------------------------------------------------------
+    case 'listServers':
+        if ((isset($_GET['enabled'])) && (($_GET['enabled'] == true) || $_GET['enabled'] == false)) {
+            if($_GET['enabled'] == true){
+                $res['servers'] = $conn->query("SELECT * FROM servers WHERE enabled = 1")->fetchAll(PDO::FETCH_ASSOC);
+            }
+            else if($_GET['enabled'] == false && $hasPermission){
+                $res['servers'] = $conn->query("SELECT * FROM servers WHERE enabled = 0")->fetchAll(PDO::FETCH_ASSOC);
+            }
+            else if(!$hasPermission){
+                permissionDenied();
+            }
+            else{
+                $res = array('error' => 'Unknown method');
+            }
+        }
+        else if($hasPermission){
+            $res['servers'] = $conn->query("SELECT * FROM servers")->fetchAll(PDO::FETCH_ASSOC);
+        }
+        else {
+            permissionDenied();
+        }
+        
+        break;
+//-----------------------------------------------------------------------------
+
+    default:
+    permissionDenied();
+}
+
+if(isset($user_key) && isset($user_id)){
+    $domain = ($conn->query("SELECT domain FROM apiAccess where uid = $user_id")->fetch(PDO::FETCH_ASSOC));
+    header("Access-Control-Allow-Origin: " . $domain['domain']); 
+}
+$conn = null;
+
+http_response_code(200);
+echo json_encode($res);
+die();
+//implement zero tolerance 
+?>
+

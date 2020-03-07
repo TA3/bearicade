@@ -1,0 +1,36 @@
+---
+- name: Ensures traefik dir exists
+  file:
+    path: "{{ installation_directory }}/traefik"
+    state: directory
+    recurse: yes
+
+- name: Adding traefik.toml file
+  template:
+    src: templates/traefik.toml.j2
+    dest: "{{ installation_directory }}/traefik/traefik.toml"
+    mode: 0600
+
+- name: Create docker network
+  docker_network:
+    name: "{{ docker_network }}"
+    state: present
+
+- name: Run traefik 2.0
+  docker_container:
+    name: traefik
+    image: traefik:2.0
+    restart_policy: unless-stopped
+    networks:
+      - name: "{{ docker_network }}"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "{{ installation_directory }}/traefik/traefik.toml:/etc/traefik/traefik.toml"
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      traefik.frontend.rule: "Host:{{ traefik_api_url }}"
+      traefik.docker.network: "web"
+      traefik.port: "8080"
+      traefik.enable: "true"

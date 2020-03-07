@@ -1,0 +1,68 @@
+---
+- name: Recursively remove mysql directories
+  file:
+    path: "{{mysql_dir}}"
+    state: absent
+- name: Ensure mysql directories exist
+  become: true
+  file:
+    path: "{{ item }}"
+    state: directory
+    recurse: yes
+  with_items:
+    - "{{ mysql_dir }}/backups"
+    - "{{ mysql_dir }}/conf"
+    - "{{ mysql_dir }}/lib"
+
+- name: Copy mysql config files
+  template:
+    src: "templates/{{ item }}.j2"
+    dest: "{{ mysql_dir }}/conf/{{ item }}"
+    force: yes
+  with_items:
+    - "character-set.cnf"
+    - "my.cnf"
+    - "sql-mode.cnf"
+
+- name: Set SELinux to permissive mode temporarily (required for mysql to perform chown)
+  shell: su -c "setenforce 0"
+
+- name: Stop Container ("{{mysql_container_name}}")
+  docker_container:
+    name: "{{mysql_container_name}}"
+    image: mysql:8.0.19
+    state: stopped
+
+- name: Create docker network
+  docker_network:
+    name: "{{ docker_network }}"
+    state: present
+
+- name: Run mysql 8.0.19
+  docker_container:
+    env:
+      MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
+      MYSQL_USER: "{{ mysql_bear_user }}"
+      MYSQL_PASSWORD: "{{ mysql_bear_password }}"
+    image: mysql:8.0.19
+    command: mysqld --default-authentication-plugin=mysql_native_password
+    labels:
+      traefik.enable: "false"
+    name: "{{ mysql_container_name }}"
+    networks:
+      - name: "{{ docker_network }}"
+    ports:
+      - "{{ mysql_port }}:3306"
+    pull: true
+    recreate: true
+    restart_policy: always
+    state: "started"
+    volumes:
+      - "{{ mysql_dir }}/backups:/var/backups/mysql"
+      - "{{ mysql_dir }}/conf:/etc/mysql/conf.d"
+      - "{{ mysql_dir }}/lib:/var/lib/mysql"
+
+- name: Waiting for MySQL to start up (10 Seconds)
+  pause:
+    prompt: To continue early press ctrl+c and then c. To abort a playbook press ctrl+c and then a.
+    minutes: 1

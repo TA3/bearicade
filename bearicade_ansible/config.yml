@@ -1,0 +1,96 @@
+---
+#--------------------------------------------------------------------
+#--------------------------------------------------------------------
+#--General Setup
+clone_directory: /root/bearicade
+installation_directory: /var/bearicade
+bearicade_user: root
+bearicade_group: root
+bearicade_domain: bear.ta3.dev
+clean_install: true
+telegram_url: https://api.telegram.org/<BOT_NUM>:<KEY>/sendMessage?chat_id=@<CHAT_ID>&text=
+#--------------------------------------------------------------------
+#--Caddy Setup
+#--------------------------------------------------------------------
+http_port: 80
+tls_enabled: true
+https_port: 443
+lets_encrypt: false
+domain_certificates_path: /root/.acme.sh/bear.ta3.dev
+domain_cer_file: bear.ta3.dev.cer #only if lets_encrypt is false and tls_enabled is true
+domain_key_file: bear.ta3.dev.key
+caddy_container_name: caddy
+#--------------------------------------------------------------------
+#--Docker Setup
+#--------------------------------------------------------------------
+docker_network: bearnet
+docker_network_host_ip: 172.18.0.1
+#--------------------------------------------------------------------
+#--PHP Setup
+#--------------------------------------------------------------------
+php_container_name: php
+php_port: 9000
+#--------------------------------------------------------------------
+#--MySQL Setup
+#--------------------------------------------------------------------
+mysql_root_password: b3ar1ike5h0n3y
+mysql_bear_user: bear
+mysql_bear_password: b3ar1ike5h0n3y
+mysql_dir: /var/mysql
+mysql_character_set: utf8mb4
+mysql_collation: utf8mb4_unicode_520_ci
+mysql_config_mysqld:
+  max_connections: 500
+  skip_name_resolve: "true"
+  default-authentication-plugin: mysql_native_password
+mysql_container_name: mysql
+mysql_env: {}
+mysql_port: 3306
+#--------------------------------------------------------------------
+#--Traefik Setup (WIP)
+#--------------------------------------------------------------------
+traefik_api_url: traefik.bear.ta3.dev
+traefik_api_user: bear
+traefik_api_password: b3ar1ike5h0n3y
+
+#--------------------------------------------------------------------
+#--Bear Server Settings
+#--------------------------------------------------------------------
+tfa_name: TA3 HPC
+bearicade_php_debug: false
+browser_recorder_limit: 9
+login_recorder_days_limit: 180
+attack_mitigation_time: +30 minutes
+attempts_before_ban: 10
+site_email: baer@ta3.dev
+site_key: fghuior.)/!/jdUkd8s2!7HVHG7777ghg
+site_name: HPC
+site_timezone: Europe/London
+site_url: https://bear.ta3.dev
+smtp_host: mail.bear.ta3.dev
+smtp_password: b3ar1ike5h0n3y
+smtp_port: 25
+smtp_username: bear
+nodes:
+  - name: panda
+    ip: 167.71.138.98
+    ssh_port: 22
+    gateway: true
+    headnode: true
+  # - name: sloth
+  #   ip: 10.110.11.10
+  #   ssh_port: 22
+  #   gateway: false
+  #   headnode: true
+  # - name: polar
+  #   ip: 172.12.5.200
+  #   ssh_port: 22
+  #   gateway: false
+  #   headnode: true
+  #   workers:
+  #     - 172.12.5.201
+  #     - 172.12.5.202
+  #     - 172.12.5.203
+  #     - 172.12.5.204
+  #     - 172.12.5.205
+  #     - 172.12.5.206

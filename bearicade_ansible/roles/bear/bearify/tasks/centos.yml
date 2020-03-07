@@ -1,0 +1,113 @@
+---
+- name: Administrator Login Details
+  debug:
+    msg: "Administrator Email: {{admin_password}}"
+- name: Ensure pyotp is installed
+  pip:
+    name:
+      - pyotp
+    state: present
+
+- name: Installing mysql
+  yum:
+    name: mysql
+    state: present
+
+- name: Copy Bearicade to installation directory
+  synchronize:
+    src: "{{ clone_directory }}/public"
+    dest: "{{ installation_directory }}"
+- name: Modifying script permissions
+  file:
+    path: "{{ installation_directory }}/public/system/scripts/{{item}}"
+    mode: u+x
+  with_items:
+    - checkUserExists.sh
+    - createUser.sh
+    - removeUser.sh
+    - syncUsers.sh
+- name: Create a directory for user's private keys
+  file:
+    path: /keys_rsa
+    state: directory
+    mode: "0744"
+- name: Generating Bearicade config
+  template:
+    src: ../files/config.php.j2
+    dest: "{{ installation_directory }}/public/config.php"
+    owner: "{{ bearicade_user }}"
+    group: "{{ bearicade_group }}"
+    mode: 0644
+- name: Generating Bearicade API Controller
+  template:
+    src: ../files/api.php.j2
+    dest: "{{ installation_directory }}/public/controller/api.php"
+    owner: "{{ bearicade_user }}"
+    group: "{{ bearicade_group }}"
+    mode: 0644
+- name: Generating Bearicade login config
+  template:
+    src: ../files/loginConfig.php.j2
+    dest: "{{ installation_directory }}/public/access/loginConfig.php"
+    owner: "{{ bearicade_user }}"
+    group: "{{ bearicade_group }}"
+    mode: 0644
+- name: Create database structure directory
+  file:
+    path: "{{ installation_directory }}/mysql-temp"
+    state: directory
+    mode: "0755"
+- name: Generating Administration database structure file
+  template:
+    src: ../files/admin-structure.sql.j2
+    dest: "{{ installation_directory }}/mysql-temp/admin-structure.sql"
+    owner: "{{ bearicade_user }}"
+    group: "{{ bearicade_group }}"
+    mode: 0644
+- name: Generating Authentication database structure file
+  template:
+    src: ../files/auth-structure.sql.j2
+    dest: "{{ installation_directory }}/mysql-temp/auth-structure.sql"
+    owner: "{{ bearicade_user }}"
+    group: "{{ bearicade_group }}"
+    mode: 0644
+- name: Create Administration database
+  mysql_db:
+    login_host: 127.0.0.1
+    login_user: root
+    login_password: "{{mysql_root_password}}"
+    name: admin
+    state: present
+- name: Create Authentication database
+  mysql_db:
+    login_host: 127.0.0.1
+    login_user: root
+    login_password: "{{mysql_root_password}}"
+    name: auth
+    state: present
+# - name: Create database user ({{mysql_bear_user}}) as a privileged user
+#   mysql_user:
+#     login_host: localhost
+#     login_user: root
+#     login_password: "{{mysql_root_password}}"
+#     name: "{{mysql_bear_user}}"
+#     password: "{{mysql_bear_password}}"
+#     priv: "*.*:ALL,GRANT"
+#     check_implicit_admin: true
+#     state: present
+- name: Structuring Administration database
+  mysql_db:
+    login_host: 127.0.0.1
+    login_user: root
+    login_password: "{{mysql_root_password}}"
+    state: import
+    name: admin
+    target: "{{ installation_directory }}/mysql-temp/admin-structure.sql"
+- name: Structuring Authentication database
+  mysql_db:
+    login_host: 127.0.0.1
+    login_user: root
+    login_password: "{{mysql_root_password}}"
+    state: import
+    name: auth
+    target: "{{ installation_directory }}/mysql-temp/auth-structure.sql"

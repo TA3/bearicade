@@ -1,0 +1,30 @@
+<?php
+{% if bearicade_php_debug == true %}
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+{% endif %}
+$c_host = "{{mysql_container_name}}";
+$c_user = "root";
+$c_password = "{{mysql_root_password}}";
+$c_dbname = "admin";
+$c_port = "{{mysql_port}}";
+$conn = new PDO("mysql:host=". $c_host .";port=". $c_port .";dbname=". $c_dbname, $c_user, $c_password);
+$browserRecorderLimit = {{ browser_recorder_limit }}; // number of records
+$loginRecorderDaysLimit = {{ login_recorder_days_limit }}; // in days
+
+
+function logActivity($uid, $type, $comment){
+$c_host = "{{mysql_container_name}}";
+$c_user = "root";
+$c_password = "{{mysql_root_password}}";
+$c_dbname = "admin";
+$c_port = "{{mysql_port}}";
+$conn = new PDO("mysql:host=". $c_host .";port=". $c_port .";dbname=". $c_dbname, $c_user, $c_password);
+    if(isset($uid) && isset($type) && isset($comment))
+        $result = $conn->prepare("INSERT INTO activity (uid, type, comment) VALUES ($uid, '$type', '$comment')");
+        if ($result->execute()) {
+            $success = true;
+        }
+}
+?>

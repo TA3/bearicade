@@ -1,0 +1,24 @@
+---
+- name: Create docker network
+  docker_network:
+    name: "{{ docker_network }}"
+    state: present
+
+- name: Run PHP-FPM 7.4
+  docker_container:
+    image: php:7.4-fpm
+    labels:
+      traefik.enable: "false"
+    name: "{{ php_container_name }}"
+    networks:
+      - name: "{{ docker_network }}"
+    exposed_ports:
+      - "{{php_port}}"
+    ports:
+      - "0.0.0.0:{{ php_port }}:9000"
+    pull: true
+    recreate: true
+    restart_policy: always
+    state: "started"
+    volumes:
+      - "{{ installation_directory }}/public:/root/bear"

@@ -1,0 +1,23 @@
+---
+- hosts: gateway
+  vars_files:
+    - ./config.yml
+  vars_prompt:
+    - name: "admin_full_name"
+      prompt: "Administrator Full Name"
+      unsafe: yes
+      private: no
+    - name: "admin_username"
+      prompt: "Administrator Username"
+      unsafe: yes
+      private: no
+    - name: "admin_email"
+      prompt: "Administrator Email"
+      unsafe: yes
+      private: no
+    - name: "admin_password"
+      prompt: "Administrator Password (hidden)"
+      unsafe: yes
+      private: yes
+  roles:
+    - bear/add_user
