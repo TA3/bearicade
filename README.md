@@ -23,15 +23,27 @@ Bearicade will require the community's contribution to reach a reliable state.
 ```bash
 sudo yum install epel-release git python python-pip docker && sudo pip install ansible
 ```
-2. Clone bearicade git repository
+2. Enable and Start Docker 
+```bash
+sudo systemctl enable docker && systemctl start docker
+```
+3. Clone bearicade git repository
 ```bash
 git clone https://github.com/TA3/bearicade
 ```
-3. Edit config.yml to suit your preference
+4. Generate Keys and Authorize the key
+```bash
+ssh-keygen && cat ~/.ssh/id_rsa.pub > ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
+```
+5. Permit SSH Root Login
+```bash
+sed -i '/^PermitRootLogin/s/no/yes/' /etc/ssh/sshd_config && systemctl restart sshd
+```
+6. Edit config.yml to suit your preference
 ```bash
 vi bearicade/bearicade_ansible/config.yml
 ```
-4. Run the ansible playbook
+7. Run the ansible playbook
 ```bash
 ansible-playbook -i bearicade/bearicade_ansible/hosts bearicade/bearicade_ansible/bear_install.yml
 ```
