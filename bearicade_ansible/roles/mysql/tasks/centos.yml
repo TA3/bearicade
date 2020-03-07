@@ -1,5 +1,5 @@
 ---
-- name: Ensure pyotp is installed
+- name: Ensure docker SDK is installed
   pip:
     name:
       - docker
