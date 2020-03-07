@@ -1,7 +1,4 @@
 ---
-- name: Administrator Login Details
-  debug:
-    msg: "Administrator Email: {{admin_password}}"
 - name: Ensure pyotp is installed
   pip:
     name:
