@@ -1,4 +1,9 @@
 ---
+- name: Ensure pyotp is installed
+  pip:
+    name:
+      - docker
+    state: present
 - name: Recursively remove mysql directories
   file:
     path: "{{mysql_dir}}"
