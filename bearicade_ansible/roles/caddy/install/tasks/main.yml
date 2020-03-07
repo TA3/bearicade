@@ -17,7 +17,10 @@
   template:
     src: ../files/www.conf
     dest: "{{ installation_directory }}/caddy/php-fpm.d/www.conf"
-
+- name: Ensure logs directory exists
+  file:
+    path: "{{ installation_directory }}/public/system/log"
+    state: directory
 - name: Ensure logs file exists
   copy:
     content: ""
