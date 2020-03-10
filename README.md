@@ -43,9 +43,13 @@ sed -i '/^PermitRootLogin/s/no/yes/' /etc/ssh/sshd_config && systemctl restart s
 ```bash
 vi bearicade/bearicade_ansible/config.yml
 ```
-7. Run the ansible playbook
+7. Install bearicade with ansible playbook
 ```bash
 ansible-playbook -i bearicade/bearicade_ansible/hosts bearicade/bearicade_ansible/bear_install.yml
+```
+8. Add Administrators with ansible playbook
+```bash
+ansible-playbook -i bearicade/bearicade_ansible/hosts bearicade/bearicade_ansible/bear_add_user.yml
 ```
 
 ## 🏠 Dashboard
