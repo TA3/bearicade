@@ -537,7 +537,7 @@ var Home = {
         },
         fileManagerEditorSave: function () {
             $('#terminalDimmer').fadeIn(100);
-            var jqxhr = $.get("../../terminal/?type=sftp&command=put&path=" + UserConfig.fileManagerEditorPath + "&data=" + Base64.encode(fileManagerEditorFlask.getCode()), function () {
+            var jqxhr = $.get("../../terminal/?type=sftp&command=put&path=" + UserConfig.fileManagerEditorPath + "&data=" + Base64.encode(fileManagerEditorFlask.getCode().replace(/^\s*[\r\n]/gm, '\r\n')), function () {
 
                 })
                 .done(function (data) {
