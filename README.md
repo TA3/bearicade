@@ -5,8 +5,9 @@
 # Bearicade  ![Version](https://img.shields.io/badge/version-0.1-blue.svg?cacheSeconds=2592000) ![Documentation](https://img.shields.io/badge/documentation-yes-brightgreen.svg) ![License: MIT](https://img.shields.io/github/license/TA3/bearicade) ![Contributors](https://img.shields.io/github/contributors/TA3/bearicade)
 > Open-souce secure gateway for distributed system
 
-Bearicade (pronounced `be(ə)riˌkād` from bear and ~~barr~~icade) is an MIT-licensed open-source project. Based on a Ph.D thesis, meaning that beaicade is developed solely by one developer (for now).
-Bearicade will require the community's contribution to reach a reliable state.
+Bearicade (pronounced `be(ə)riˌkād` from bear and ~~barr~~icade) is an MIT-licensed open-source data-driven secure gateway for distributed system, build on a REST API, containerized via Docker and deployable with Ansible. 
+
+Bearicade has been presented at the IEEE 19th International Conference on Trust, Security and Privacy in Computing and Communications [Paper](https://ieeexplore.ieee.org/document/9342969) 
 
 ![Dashboard](https://bearicade.ta3.dev/assets/imgs/wireframe.svg)
 
