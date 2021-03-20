@@ -7,7 +7,7 @@
 
 Bearicade (pronounced `be(ə)riˌkād` from bear and ~~barr~~icade) is an MIT-licensed open-source data-driven secure gateway for distributed system, build on a REST API, containerized via Docker and deployable with Ansible. 
 
-Bearicade has been presented at the IEEE 19th International Conference on Trust, Security and Privacy in Computing and Communications [Paper](https://ieeexplore.ieee.org/document/9342969) 
+Bearicade has been presented at the IEEE 19th International Conference on Trust, Security and Privacy in Computing and Communications [Paper](https://ieeexplore.ieee.org/document/9342969).
 
 ![Dashboard](https://bearicade.ta3.dev/assets/imgs/wireframe.svg)
 
