@@ -51,7 +51,7 @@ if($isAdmin){
 
     <script src="https://unpkg.com/filepond-plugin-image-preview"></script>
     <script src="https://unpkg.com/filepond"></script>
-    <script src="https://unpkg.com/vue-filepond"></script>
+    <script src="https://unpkg.com/vue-filepond@6.0.3"></script>
     <script src="https://unpkg.com/codeflask/build/codeflask.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fingerprintjs2/2.0.3/fingerprint2.min.js"></script>
 
